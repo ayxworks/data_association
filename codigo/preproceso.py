@@ -461,3 +461,6 @@ def instancia_articulo(indice, documentos):
 
 def temas_totales_print(temas):
     print(temas)
+
+def guardar_csv():
+    
