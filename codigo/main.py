@@ -1,8 +1,9 @@
 import os
 import sys
 import time
-import preproceso
-import util, clustering, evaluador, explorar
+import preproceso, util, file2csv
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.cluster import KMeans
 
 def runClusteringPruebas(argumentos):
     import __main__
@@ -11,73 +12,31 @@ def runClusteringPruebas(argumentos):
     ##########################################################################################
     if not argumentos.skip_preproceso:
         print('1: Preprocessing')
-        #directorio_ruta = 'datos'
-        print(argumentos)
-        tfidf_vecs, documentos = preproceso.preprocesar_train(argumentos.preproceso)
-
+        tfidf_vecs, documentos = preproceso.preprocesar(argumentos.preproceso)
         print ('Ha tardado en preprocesar ', calc_tiempo(comienzo), 'segundos!')
-    ##########################################################################################
-    if not argumentos.skip_clustering:
-        print('2: Clustering')
-        vector_dataset = util.cargar(os.getcwd() + argumentos.vector_tupla)
-        print('Se ha cargado los vectores tf-idf, del directorio: ' + argumentos.vector_tupla)
-        cl = clustering.Cluster(vector_dataset)
-        cl.clustering(argumentos.distancia)
-        print ('Ha tardado en hacer el cluster jerarquico ', calc_tiempo(comienzo), 'segundos!')
-    ##########################################################################################
-    if not argumentos.skip_evaluacion:
-        print('3: Evaluando')
-        ev = evaluador.Evaluador()
-        path = util.cargar(os.getcwd()+ argumentos.evaluacion)
-        instancias =  util.cargar(os.getcwd()+argumentos.vector_tupla)
-        ev.evaluar(path, instancias)
-        print ('Ha tardado en evaluar ', calc_tiempo(comienzo), 'segundos!')    
-    
-    ##########################################################################################
-    if not argumentos.skip_newInst:
-        print('4: Anadir nuevas instancias')
-        vectoresTest, ndocs, nNew = preproceso.preprocesar_newInst('/preproceso/raw_tfidf', argumentos.backup_datos, argumentos.newInst, "/preproceso/vocabulario_train.txt", "/preproceso/lista_temas.txt")
-        instancias = util.cargar(os.getcwd()+argumentos.vector_tupla)
-        instsAClasif = list(range(ndocs, ndocs+nNew))
-        datosTest=util.cargar(os.getcwd()+'/preproceso/new_lista_articulos.txt')
-        lista_temas = util.cargar(os.getcwd()+'/preproceso/new_lista_temas.txt')
-        #instsAClasif = list(range(1, nNew+1))
-        agrupacion = explorar.agruparInstanciasPorCluster('/resultados/iter.txt',instancias,3,instsAClasif, vectoresTest, datosTest)
-        for each in agrupacion:
-            print ("Instancia: " + str(each[0] +1) +", tema estimado: " +  str(each[2]) + ", Tema real: "+ str(each[3]))
-            if len(each[3])>0:
-                for temaN in each[3]:
-                    print("El tema "+ str(temaN) + " es " + str(lista_temas[temaN]))  
-        print ('Ha tardado en anadir una nueva instancia ', calc_tiempo(comienzo), 'segundos!')
-    ##########################################################################################
-    #no funciona de momento
-    if not argumentos.skip_test:
-        print('5: Anadir nuevas instancias del conjunto separado test')
-        vector_dataset_test, ndocs, nNew = preproceso.preprocesar_test('/preproceso/raw_tfidf', argumentos.backup_datos, argumentos.backup_datos_test, "/preproceso/vocabulario_train.txt", "/preproceso/lista_temas.txt")
-        instancias = util.cargar(os.getcwd()+argumentos.vector_tupla)
-        vectoresTest = util.cargar(os.getcwd()+'/preproceso/test_tfidf.txt')
-        datosTest=util.cargar(os.getcwd()+argumentos.backup_datos_test)
-        lista_temas = util.cargar(os.getcwd()+'/preproceso/new_lista_temas.txt')
-        instsAClasif = list(range(0, nNew+1))
-        agrupacion = explorar.agruparInstanciasPorCluster('/resultados/iter.txt',instancias,3,instsAClasif, vector_dataset_test, datosTest)
-        for each in agrupacion:
-            print (each[2],each[3])
-            print(type(each[3]))
-            if len(each[3])>0:
-                for temaN in each[3]:
-                    print("El tema "+ str(temaN) + " es " + str(lista_temas[temaN]))  
         
-        print ('Ha tardado en anadir una nueva instancia ', calc_tiempo(comienzo), 'segundos!')
     ##########################################################################################
-    if not argumentos.get_instance:
-        documentos = util.cargar(os.getcwd()+argumentos.backup_datos)
-        preproceso.instancia_articulo(argumentos.indice_instancia, documentos)
-        print ('Se ha tardado en buscar la instancia ', calc_tiempo(comienzo), 'segundos!')
+    if not argumentos.skip_jerarquico:
+        print('2: Cluster aglomerativo')
+        vector_dataset = util.cargar(os.getcwd() + argumentos.vector_tupla)
+        documentos = util.cargar(os.getcwd() + argumentos.backup_datos)
+        print('Se ha cargado los vectores tf-idf, del directorio: ' + argumentos.vector_tupla)
+        cluster = AgglomerativeClustering(n_clusters=3, affinity='euclidean', linkage='ward')
+        etiquetaCluster = cluster.fit_predict(vector_dataset.toarray())
+        print ('Ha tardado en hacer el cluster jerarquico', calc_tiempo(comienzo), ' segundos!')
+        #file2csv.guardar_csv(argumentos.path_jerarquico , documentos, etiquetaCluster)
+        file2csv.guardar_pandas_csv(argumentos.path_jerarquico , documentos, etiquetaCluster)
+        print ('Guardando en csv')
     ##########################################################################################
-    if not argumentos.get_temas:
-        temas = util.cargar(os.getcwd()+"/preproceso/lista_temas.txt")
-        preproceso.temas_totales_print(temas)
-        print ('Se ha tardado en buscar la instancia ', calc_tiempo(comienzo), 'segundos!')    
+    if not argumentos.skip_kmeans:
+        print('3: Cluster k-means')
+        vector_dataset = util.cargar(os.getcwd() + argumentos.vector_tupla)
+        docs = util.cargar(os.getcwd() + argumentos.backup_datos)
+        kmeans = KMeans(n_clusters=3).fit(vector_dataset)
+        etiquetaCluster = kmeans.predict(docs)
+        print ('Ha tardado el cluster k-means', calc_tiempo(comienzo), ' segundos!')    
+        file2csv.guardar_csv(argumentos.path_kmeans, documentos, etiquetaCluster)
+        print ('Guardando en csv')
     
     print ('\nFin del programa: ', calc_tiempo(comienzo), 'segundos!')
     print("Gracias por utilizar nuestro programa\n")
@@ -99,38 +58,31 @@ def readCommand( argv ):
                 python main.py -h
     """
     parser = OptionParser(usageStr)
-    parser.add_option('-z', '--testing', action='store', dest='testing',
-                      help='Pruebas', default='lista_articulos_test')
-    parser.add_option('-g','--get_instance', action='store_false', dest='get_instance',
-                      help='Coge la instancia del indice seleccionado e imprime por pantalla', default=True)
-    parser.add_option('-j','--get_temas', action='store_false', dest='get_temas',
-                      help='Coge los temas procesados e imprime por pantalla', default=True)
+
+    parser.add_option('-j','--path_jerarquico', dest='path_jerarquico',
+                      help='Coge los temas procesados e imprime por pantalla', default='preproceso/jerarquico.csv')
+    parser.add_option('-k','--path_kmeans', dest='path_kmeans',
+                      help='Coge la instancia del indice seleccionado e imprime por pantalla', default='preproceso/kmeans.csv')
     parser.add_option('-i', '--indice_instancia', action='store', dest='indice_instancia',
                       help='Se elige el indice de una instancia', default=0)
     parser.add_option('-r','--skip_preproceso', action='store_false', dest='skip_preproceso',
                       help='Flag para saltarse el preproceso', default=True)
-    parser.add_option('-s', '--skip_clustering', action='store_false', dest='skip_clustering',
+    parser.add_option('-s', '--skip_jerarquico', action='store_false', dest='skip_jerarquico',
                       help='Flag para saltarse el clustering', default=True)
-    parser.add_option('-t', '--skip_evaluacion', action='store_false', dest='skip_evaluacion',
+    parser.add_option('-t', '--skip_kmeans', action='store_false', dest='skip_kmeans',
                       help='Flag para saltarse la evaluacion', default=True)
     parser.add_option('-u', '--skip_newInst', action='store_false', dest='skip_newInst',
                       help='Flag para saltarse el apartado de anadir nuevas instancias', default=True)
     parser.add_option('-w', '--skip_test', action='store_false', dest='skip_test',
                       help='Flag para saltarse el apartado de anadir instancias del test que no estan en el cluster', default=True)
-    parser.add_option('-a', '--asignar_cluster', dest='asignar_cluster',
-                      help='Elegir un cluster si ya hay una estructura', default='/resultados/datosAL.txt')
-    parser.add_option('-e', '--evaluacion', dest='evaluacion',
-                      help='Se hace la evaluacion del cluster', default='/resultados/dist.txt')
-    parser.add_option('-y', '--iteraciones', dest='iteraciones',
-                      help='Path de las iteraciones del cluster', default='/resultados/iteraciones.txt')
     parser.add_option('-b', '--backup_datos', dest='backup_datos',
-                      help='Path del archivo donde se guardan las instancias', default='/preproceso/lista_articulos_train.txt')
+                      help='Path del archivo donde se guardan las instancias', default='/preproceso/full_lista_articulos.txt')
     parser.add_option('-v', '--backup_datos_test', dest='backup_datos_test',
                       help='Path del archivo donde se guardan las instancias para test', default='/preproceso/lista_articulos_test.txt')
     parser.add_option('-p', '--preproceso', dest='preproceso',
                       help='Path de los textos', default='datos')
     parser.add_option('-c', '--vector_tupla', action='store', dest='vector_tupla',
-                      help='Path de los vectores para hacer el cluster', default='/preproceso/train_tfidf.txt')
+                      help='Path de los vectores para hacer el cluster', default='/preproceso/full_tfidf.txt')
     parser.add_option('-n', '--newInst', action='store', dest='newInst',
                       help='Para añadir nuevas instancias al cluster', default='test')
     parser.add_option('-d', '--distancia', action='store', dest='distancia',
