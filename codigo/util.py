@@ -5,48 +5,8 @@ Created on Fri Oct 18 11:00:38 2019
 @author: StromValhalla
 """
 import pickle
-
-"""
-    Dado una lista de vectores te devuelve su centroide
-    pre: Una lista no vacia de tuplas numericas
-    post: Devuelve el centroide de esos vectores
-"""
-def calcularCentro(lista, vectores):
-    centro = []
-    i=0
-    x=0
-    
-    while i<len(vectores[0]):
-        for each in lista: 
-            vector = vectores[each]
-            x+=vector[i]
-            
-        x=x/len(lista)
-        centro.append(x)
-        x=0
-        i+=1
-    
-    centro = tuple(centro)
-    return centro
-
-
-"""
-    Se encarga de actualizar las lista con los clusters que se han asignado a cada instancia
-    pre: una lista de vectores, las agrupaciones y una lista
-    post: Devuelve la lista con la correspondiente agrupacion
-"""
-def listaClusters(inst, agrup, lista): 
-    i = 0
-    while i<len(agrup):
-        for each in agrup[i]:
-            "indice = inst.index(each)"
-            lista[each] = i
-            
-        i+=1
-        
-    return lista
-
-
+from operator import itemgetter
+from collections import OrderedDict
 
 """
 Guarda la estructura de datos
@@ -67,36 +27,43 @@ Post: La estructura de datos
 """
 def cargar(path):
     with open(path, "rb") as fp:  
-        clust = pickle.load(fp)
+        obj = pickle.load(fp)
         
     fp.close()
 
-    return clust
+    return obj
 
-
-"""
-Genera una lista con ceros
-Pre : La longitud de la lista
-Post: U lista
-"""
-def generarLista(num):
-    l = [0] * num
-    return l
-
-
-"""
-Calcula la distancia manhattan entre dos centroides.
-Pre : Coordenadas de dos centroides y valor m
-     m=1 -> Distancia Manhattan
-     m=2 -> Distancia Euclidea
-     m=7.5 -> Distancia Minkowski
-Post: Distancia Manhattan, Euclidea o Minkowski entre los dos centroides.
-"""
-def calcularDistancia(centr1, centr2, m):
-    dist=0
-    i=0
-    while i<len(centr1):
-        dist+= (abs(centr1[i]-centr2[i]))**m
-        i+=1
-    dist = dist**(1/m)
-    return dist
+def etiquetaClusterTema(datos, etiquetaCluster):
+    clusterTemas = []
+    temaEscogido = []
+    misDict = []
+    
+    #crear una lista por cada cluster que exista
+    for i in range(len(set(etiquetaCluster))):
+        aux = []
+        clusterTemas.append(aux)
+    #anadir cada tema a la lista del cluster que sea
+    for j in range(len(datos)):
+        if datos[j].temas != 0:
+            clusterTemas[etiquetaCluster[j]].append(datos[j].temas)
+    #contar los temas en cada lista
+    for listaInst in clusterTemas:
+        my_dict = {}
+        for listaTemas in listaInst:
+            for tema in listaTemas:
+                if tema != "nada":
+                    if tema in my_dict:
+                        my_dict[tema] += 1
+                    else:
+                        my_dict[tema] = 1
+        misDict.append(my_dict)
+    
+    for k in range(len(clusterTemas)):
+        d = OrderedDict(sorted(misDict[k].items(), key=itemgetter(1)))
+        keys = list(d.keys())
+        if len(keys) > 1:
+            etiqueta = keys[0] + "_" + keys[1]
+        else:
+            etiqueta = keys[0]
+        temaEscogido.append(etiqueta)
+    return temaEscogido

@@ -94,7 +94,7 @@ class Datos:
                 self.sitios.append(str(un_lugar.decode("utf-8")))
                 Datos.etiquetas_temas_sitios.add(un_lugar)
         
-        for organizaciones in articulo.find_all("ORGS"):
+        for organizaciones in articulo.find_all("orgs"):
             if len(organizaciones)==0:
                 self.organizaciones.append("nada") 
             else:
@@ -102,7 +102,7 @@ class Datos:
                     una_org = org.get_text()
                     self.organizaciones.append(una_org)
         
-        for cambios in articulo.find_all("EXCHANGES"):
+        for cambios in articulo.find_all("exchanges"):
             if len(cambios)==0:
                 self.intercambios.append("nada") 
             else:
@@ -110,7 +110,7 @@ class Datos:
                     un_cambio = cambio.get_text()
                     self.intercambios.append(un_cambio)
         
-        for empresas in articulo.find_all("COMPANIES"):
+        for empresas in articulo.find_all("companies"):
             if len(empresas)==0:
                 self.companias.append("nada") 
             else:
